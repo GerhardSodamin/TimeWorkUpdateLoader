@@ -152,6 +152,7 @@ namespace TimeWorkUpdateLoader
                     // Neue Version kopieren
                     File.Copy(PfadNeueVersion, OriginalPfad, true);
 
+                    ini.IniWriteValue("Version", "CurrentVersion", version.Version);
 
                     Console.WriteLine("---------------------------------");
                     Console.WriteLine("       UPDATE IST FERTIG!        ");
