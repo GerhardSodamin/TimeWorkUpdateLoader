@@ -44,9 +44,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Allgemeine Klassen\INI.cs" />
+    <Compile Include="Allgemeine Klassen\Tools.cs" />
     <Compile Include="DaoKlassen\DaoVersion.cs" />
     <Compile Include="Datenbank\Connector.cs" />
     <Compile Include="Datenbank\Database.cs" />
+    <Compile Include="Helper\FileObject.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

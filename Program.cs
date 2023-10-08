@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-
+using System.Net.NetworkInformation;
+using System.Reflection;
+using TimeWorkUpdateLoader.Allgemeine_Klassen;
+using TimeWorkUpdateLoader.Helper;
 
 namespace TimeWorkUpdateLoader
 {
@@ -12,14 +16,18 @@ namespace TimeWorkUpdateLoader
 
             try
             {
+
+                // Notwendige Variablen
+                // ---------------------------------
                 Database datenbank = null;
                 bool UpdateIsNecessary = false;
                 string Installationspfad = "";
                 string NetzwerkPfad = "";
-                string OriginalPfad = "";
-                string PfadNeueVersion = "";
                 string CurrentVersion = "";
-              
+                Process firstProc = null;
+                // ---------------------------------
+
+
                 // INI Einladen
                 // --------------------------------------------------------------------------------------------------
                 string path = @"C:\CRM\" + @"Config.ini";
@@ -35,39 +43,17 @@ namespace TimeWorkUpdateLoader
                 // --------------------------------------------------------------------------------------------------
 
 
-                // Installationspfad
-                // --------------------------------------------------------------------------------------------------
-                Installationspfad = ini.IniReadValue("System_Folders", "Installationspfad");
-
-                if (String.IsNullOrEmpty(Installationspfad))
-                {
-                    Console.WriteLine("Installationspfad von TimeWork in der Config.ini ist leer!");
-                    Console.ReadKey(true);
-                    Environment.Exit(0);
-                }
-
-                OriginalPfad = Installationspfad + @"\AMS_e.exe";
-             
-                if (!File.Exists(OriginalPfad))
-                {
-                    Console.WriteLine("Das Startprogramm von TimeWork aus der Config.ini existiert nicht!\nPfad: " + OriginalPfad);
-                    Console.ReadKey(true);
-                    Environment.Exit(0);
-                }
-                // --------------------------------------------------------------------------------------------------
-
                 // Aktuelle Version
                 // --------------------------------------------------------------------------------------------------
                 CurrentVersion = ini.IniReadValue("Version", "CurrentVersion");
-
                 if (String.IsNullOrEmpty(CurrentVersion))
                 {
-                    Console.WriteLine("Aktuelle Version von TimeWork in der Config.ini nicht gefunden!");
+                    Console.WriteLine("Aktuelle Programmversion von TimeWork in der Config.ini nicht gefunden!");
                     Console.ReadKey(true);
                     Environment.Exit(0);
                 }
                 // --------------------------------------------------------------------------------------------------
-
+           
 
                 // Datenbank initialisieren
                 // --------------------------------------------------------------------------------------------------
@@ -83,7 +69,22 @@ namespace TimeWorkUpdateLoader
                     Environment.Exit(0);
                 }
                 // --------------------------------------------------------------------------------------------------
-               
+
+
+                // Installationspfad
+                // ------------------------------------------------------------------------
+                Installationspfad = Tools.CorrectPathMissingBackslash(ini.IniReadValue("System_Folders", "Installationspfad"));
+                if (!Directory.Exists(Installationspfad))
+                {
+                    Console.WriteLine("Der Installationspfad für TimeWork " + Installationspfad + " existiert nicht!");
+                    Console.WriteLine("Bitte kontrollieren sie die Config.INI");
+                    Console.WriteLine("Programm wird beendet!");
+                    Console.ReadKey(true);
+                    Environment.Exit(0);
+                }
+                // ------------------------------------------------------------------------
+
+
                 // Muss ein Update gemacht werden?
                 // --------------------------------------------------------------------------------------------------
                 DaoVersion version = DaoVersion.GetNewestVersion();
@@ -99,18 +100,57 @@ namespace TimeWorkUpdateLoader
                 // --------------------------------------------------------------------------------------------------
 
 
-
                 // Updateprozess
                 // --------------------------------------------------------------------------------------------------
                 if (UpdateIsNecessary) 
                 {
 
+                    // Pfad für die neuen Files auslesen
+                    // ------------------------------------------------------------------------
+                    NetzwerkPfad = Tools.CorrectPathMissingBackslash(ini.IniReadValue("System_Folders", "Netzwerkpfad"));
+                    if (!Directory.Exists(NetzwerkPfad)) 
+                    {
+                        Console.WriteLine("Der Netzwerkpfad für die neuen Files " + NetzwerkPfad + " existiert nicht!");
+                        Console.WriteLine("Bitte kontrollieren sie die Config.INI");
+                        Console.WriteLine("Programm wird beendet!");
+                        Console.ReadKey(true);
+                        Environment.Exit(0);
+                    }
+                    // ------------------------------------------------------------------------
+
+
+                    // Liste aller Files erstellen
+                    // ------------------------------------------------------------------------
+                    List<FileObject> Files = new List<FileObject>();
+                    DirectoryInfo ParentDirectory = new System.IO.DirectoryInfo(NetzwerkPfad);
+                    foreach (FileInfo f in ParentDirectory.GetFiles())
+                    {
+                        if (f.Extension == ".txt") { continue; }
+
+                        FileObject obj = new FileObject();
+                        obj.SourceFile = f.FullName;
+                        obj.DestinationFile = Installationspfad + f.Name;
+
+                        Files.Add(obj);
+                    }
+                    // ------------------------------------------------------------------------
+
+
+                    // User Infos
+                    // ------------------------------------------------------------------------
                     Console.WriteLine("---------------------------------");
                     Console.WriteLine("       UPDATE IST NÖTIG!         ");
                     Console.WriteLine("---------------------------------");
                     Console.WriteLine("                                 ");
                     Console.WriteLine("ALTE VERSION: " + CurrentVersion  );
                     Console.WriteLine("NEUE VERSION: " + version.Version );
+                    Console.WriteLine("                                 ");
+                    Console.WriteLine("NEUE FILES:                      ");
+
+                    foreach (FileObject File in Files) 
+                    {
+                        Console.WriteLine(File.SourceFile);
+                    }
                     Console.WriteLine("                                 ");
 
                     if (!string.IsNullOrEmpty(version.Bemerkung)) 
@@ -119,42 +159,55 @@ namespace TimeWorkUpdateLoader
                         Console.WriteLine("                                ");
                     }
 
-                    Console.WriteLine("Drücken sie j um das Update zu installieren!\nBeenden sie vorher umbedingt alle laufenden TimeWork Sessions!");
+                    Console.WriteLine("Drücken sie j(a) um das Update zu installieren!\nBeenden sie vorher umbedingt alle laufenden TimeWork Sessions!");
                     if (Console.ReadKey(true).Key != ConsoleKey.J) 
                     {
-                        Console.WriteLine("Update wird abgebrochen!\nProgramm wird beendet");
-                        Console.ReadKey(true);
-                        Environment.Exit(0);
+                        Console.WriteLine("                                ");
+                        Console.WriteLine("Das Programmupdate wird abgebrochen!!!");
+                        Console.WriteLine("Drücken sie j(a) um die alte Version von TimeWork zu starten!\nDies wird ausdrücklich nicht empfohlen!!!");
+                        if (Console.ReadKey(true).Key != ConsoleKey.J)
+                        {
+                            Environment.Exit(0);
+                        }
+                        else 
+                        {
+                            firstProc = new Process();
+                            firstProc.StartInfo.FileName = Installationspfad + "AMS_e.exe";
+                            firstProc.EnableRaisingEvents = true;
+                            firstProc.Start();
+                            Environment.Exit(0);
+                        }
+                            
                     }
+                    // ------------------------------------------------------------------------
 
 
-                    NetzwerkPfad = ini.IniReadValue("System_Folders", "Netzwerkpfad");
-                    
-                    if (String.IsNullOrEmpty(NetzwerkPfad))
+                    // File Aktionen
+                    // ------------------------------------------------------------------------
+                    Console.WriteLine("                                ");
+                    Console.WriteLine("Update Start!                   ");
+
+                    foreach (FileObject file in Files)
                     {
-                        Console.WriteLine("Der Zielpfad für die neue Version ist leer!");
-                        Console.ReadKey(true);
-                        Environment.Exit(0);
+                        Console.WriteLine(" ");
+
+                        if (File.Exists(file.DestinationFile)) 
+                        {
+                            Console.WriteLine("Altes File wird gelöscht: " + file.DestinationFile);
+                            File.Delete(file.DestinationFile);
+                        }
+
+                        // Neue Version kopieren
+                        Console.WriteLine("Kopie von: " + file.SourceFile);
+                        Console.WriteLine("Kopie auf: " + file.DestinationFile);
+                        File.Copy(file.SourceFile, file.DestinationFile, true);
                     }
+                    // ------------------------------------------------------------------------
 
-                    PfadNeueVersion = NetzwerkPfad + @"\AMS_e.exe";
-
-                    if (!File.Exists(PfadNeueVersion))
-                    {
-                        Console.WriteLine("Der Zielpfad für die neue Version stimmt nicht!\nPfad: " + PfadNeueVersion + @"\AMS_e.exe");
-                        Console.ReadKey(true);
-                        Environment.Exit(0);
-                    }
-
-                    // Altes File löschen
-                    File.Delete(OriginalPfad);
-
-                    // Neue Version kopieren
-                    File.Copy(PfadNeueVersion, OriginalPfad, true);
 
                     ini.IniWriteValue("Version", "CurrentVersion", version.Version);
 
-                    Console.WriteLine("---------------------------------");
+                    Console.WriteLine("\n---------------------------------");
                     Console.WriteLine("       UPDATE IST FERTIG!        ");
                     Console.WriteLine("---------------------------------");
                     Console.WriteLine(" ");
@@ -164,17 +217,14 @@ namespace TimeWorkUpdateLoader
                 }
                 // --------------------------------------------------------------------------------------------------
 
-
-
                 // Programm Start
                 // --------------------------------------------------------------------------------------------------
-                Process firstProc = new Process();
-                firstProc.StartInfo.FileName = Installationspfad + @"\AMS_e.exe";
+                firstProc = new Process();
+                firstProc.StartInfo.FileName = Installationspfad + "AMS_e.exe";
                 firstProc.EnableRaisingEvents = true;
                 firstProc.Start();
                 // --------------------------------------------------------------------------------------------------
 
-                Environment.Exit(0);
 
             }
             catch (Exception ex)
@@ -183,7 +233,15 @@ namespace TimeWorkUpdateLoader
                 Console.ReadKey(true);
                 Environment.Exit(0);
             }
+            finally 
+            {
+                Environment.Exit(0);
+            }
+
+
 
         }
+
+
     }
 }
