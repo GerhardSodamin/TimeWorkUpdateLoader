@@ -99,6 +99,30 @@ namespace TimeWorkUpdateLoader
                 if (version.Version != CurrentVersion) { UpdateIsNecessary = true; }
                 // --------------------------------------------------------------------------------------------------
 
+                // Gibt es eine UserSperre?
+                // --------------------------------------------------------------------------------------------------
+                Int64 UserID  = Tools.ConvertStringToInt32(ini.IniReadValue("Standarduser", "ID").ToString());
+                if (UserID > 0) 
+                {
+                    DaoShutDownSperre sperre = DaoShutDownSperre.UserHasLockTime(UserID);
+                    if (sperre != null)
+                    {
+
+                        Console.WriteLine("----------------------------------------------------------");
+                        Console.WriteLine("Es liegt eine Sperre aufgrund von Wartungsarbeiten vor:");
+                        Console.WriteLine("Beginn: " + sperre.BeginnZeit);
+                        Console.WriteLine("Ende  : " + sperre.EndeZeit);
+                        Console.WriteLine(" ");
+                        Console.WriteLine("Drücken Sie eine beliebige Taste um TimeWork zu beenden!");
+                        Console.WriteLine("----------------------------------------------------------");
+                        Console.ReadKey(true);
+                        Environment.Exit(0);
+
+                    }
+                }
+                // --------------------------------------------------------------------------------------------------
+
+
 
                 // Updateprozess
                 // --------------------------------------------------------------------------------------------------

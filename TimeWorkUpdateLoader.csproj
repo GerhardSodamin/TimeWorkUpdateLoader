@@ -32,6 +32,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Oxygen-Icons.org-Oxygen-Apps-preferences-system-time.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -45,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Allgemeine Klassen\INI.cs" />
     <Compile Include="Allgemeine Klassen\Tools.cs" />
+    <Compile Include="DaoKlassen\DaoShutDownSperre.cs" />
     <Compile Include="DaoKlassen\DaoVersion.cs" />
     <Compile Include="Datenbank\Connector.cs" />
     <Compile Include="Datenbank\Database.cs" />
@@ -55,6 +59,8 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="Oxygen-Icons.org-Oxygen-Apps-preferences-system-time.ico" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
